@@ -1,0 +1,47 @@
+version: "3.7"
+volumes:
+  db-store:
+  php-fpm-socket:
+services:
+  app:
+    build: ./docker/php
+    volumes:
+      - php-fpm-socket:/var/run/php-fpm
+      - ./backend:/work/backend
+  web:
+    build:
+      context: ./docker/nginx
+      args:
+        - DOCUMENT_ROOT=${DOCUMENT_ROOT}
+        - WEB_HOST_NAME=${WEB_HOST_NAME}
+    ports:
+      - ${HTTP_PORT}:8888
+    volumes:
+      - php-fpm-socket:/var/run/php-fpm
+      - ./backend:/work/backend
+    environment:
+      DOCUMENT_ROOT: ${DOCUMENT_ROOT}
+      WEB_HOST_NAME: ${WEB_HOST_NAME}
+  db:
+    build: ./docker/mysql
+    volumes:
+      - db-store:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - ${MYSQL_PORT}:3306
+  https-portal:
+    image: steveltn/https-portal:1
+    ports:
+      - ${HTTPS_PORT}:443
+    restart: always
+    volumes:
+      - ./docker/https-portal:/var/lib/https-portal
+    environment:
+      DOMAINS: ${WEB_HOST_NAME} -> http://web:8888
+      STAGE: local
+      # STAGE: 'production' # Don't use production until staging works
+      # FORCE_RENEW: 'true'
